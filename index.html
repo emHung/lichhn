@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sự Kiện</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Hiển thị ví -->
+    <div id="wallet" class="wallet">
+        <div class="wallet-icon">💰</div>
+        <div class="wallet-content">
+            <div class="wallet-title">Ví của bạn</div>
+            <div class="wallet-amount"><span id="walletAmount">0</span>đ</div>
+        </div>
+    </div>
+
+    <!-- Thông báo -->
+    <div id="notification" class="notification">
+        <span id="notificationMessage"></span>
+        <span class="notification-close">&times;</span>
+    </div>
+
+    <!-- Thưởng khi hoàn thành -->
+    <div id="rewardNotification" class="reward-notification">
+        <div class="reward-content">
+            <span class="reward-icon">🎉</span>
+            <span id="rewardMessage">+10.000Đ vào ví</span>
+            <span class="reward-close">&times;</span>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h1>Quản Lý Lịch Sự Kiện</h1>
+        
+        <!-- Đếm ngày hoạt động -->
+        <div class="activity-history">
+            <div class="history-card">
+                <div class="history-icon">📅</div>
+                <div class="history-title">Đã hoạt động</div>
+                <div class="history-value"><span id="activityDays">0</span> ngày</div>
+            </div>
+            <div class="history-card">
+                <div class="history-icon">✅</div>
+                <div class="history-title">Hoạt động đã hoàn thành</div>
+                <div class="history-value"><span id="completedActivities">0</span></div>
+            </div>
+            <div class="history-card">
+                <div class="history-icon">⏱️</div>
+                <div class="history-title">Ngày hoạt động gần nhất</div>
+                <div class="history-value"><span id="lastActiveDate">Chưa có</span></div>
+            </div>
+        </div>
+        
+        <!-- Form thêm sự kiện mới -->
+        <div class="event-form">
+            <h2>Thêm Sự Kiện Mới</h2>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label for="eventTime">Thời gian:</label>
+                    <input type="text" id="timeStart" placeholder="HH:MM" required>
+                    <span>-</span>
+                    <input type="text" id="timeEnd" placeholder="HH:MM" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventName">Hoạt động:</label>
+                    <input type="text" id="eventName" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventDate">Ngày:</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventStatus">Trạng thái:</label>
+                    <select id="eventStatus" required>
+                        <option value="Đã hoàn thành">Đã hoàn thành</option>
+                        <option value="Đang thực hiện">Đang thực hiện</option>
+                        <option value="Chưa bắt đầu">Chưa bắt đầu</option>
+                    </select>
+                </div>
+                <button type="submit" id="submitBtn">Thêm Sự Kiện</button>
+            </form>
+        </div>
+
+        <!-- Bảng hiển thị sự kiện -->
+        <div class="event-table">
+            <h2>Danh Sách Sự Kiện</h2>
+            <table id="eventsTable">
+                <thead>
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>Hoạt động</th>
+                        <th>Ngày</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="eventsBody">
+                    <!-- Nội dung sẽ được thêm vào bằng JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal chỉnh sửa sự kiện -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Chỉnh Sửa Sự Kiện</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editTimeStart">Thời gian bắt đầu:</label>
+                    <input type="text" id="editTimeStart" placeholder="HH:MM" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTimeEnd">Thời gian kết thúc:</label>
+                    <input type="text" id="editTimeEnd" placeholder="HH:MM" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEventName">Hoạt động:</label>
+                    <input type="text" id="editEventName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEventDate">Ngày:</label>
+                    <input type="date" id="editEventDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEventStatus">Trạng thái:</label>
+                    <select id="editEventStatus" required>
+                        <option value="Đã hoàn thành">Đã hoàn thành</option>
+                        <option value="Đang thực hiện">Đang thực hiện</option>
+                        <option value="Chưa bắt đầu">Chưa bắt đầu</option>
+                    </select>
+                </div>
+                <button type="submit">Cập Nhật</button>
+            </form>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
