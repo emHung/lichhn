@@ -406,4 +406,22 @@ tr:nth-child(even) {
     .history-card {
         width: 100%;
     }
+}
+
+.date-selector {
+    margin: 16px 0 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-selector label {
+    font-size: 1rem;
+}
+
+.date-selector select {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
 } 

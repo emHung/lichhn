@@ -1,85 +1,30 @@
+// Hàm tự động điền ngày hiện tại
+function setTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    document.getElementById('eventDate').value = `${year}-${month}-${day}`;
+}
+
+// Hàm định dạng ngày yyyy-mm-dd sang dd/mm/yyyy
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+// Hàm lấy giờ Việt Nam (GMT+7)
+function getVietnamTime() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + 7 * 3600000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Thêm code này vào đầu hàm
-    const loginBtn = document.getElementById('loginBtn');
-    const registerBtn = document.getElementById('registerBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const authContainer = document.getElementById('authContainer');
-    const userInfo = document.getElementById('userInfo');
-    const userEmail = document.getElementById('userEmail');
-    
-    // Kiểm tra trạng thái đăng nhập
-    window.firebaseApp.onAuthChanged(window.firebaseApp.auth, (user) => {
-        if (user) {
-            // Người dùng đã đăng nhập
-            authContainer.style.display = 'none';
-            userInfo.style.display = 'block';
-            userEmail.textContent = user.email;
-            
-            // Tải dữ liệu từ Firebase
-            loadEvents();
-            
-            // Tải dữ liệu ví
-            const walletRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + user.uid + '/wallet');
-            window.firebaseApp.dbGet(walletRef)
-                .then((snapshot) => {
-                    if (snapshot.exists()) {
-                        walletBalance = snapshot.val();
-                        updateWalletDisplay();
-                    }
-                });
-            
-            // Tải lịch sử hoạt động
-            const historyRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + user.uid + '/activityHistory');
-            window.firebaseApp.dbGet(historyRef)
-                .then((snapshot) => {
-                    if (snapshot.exists()) {
-                        activityHistory = snapshot.val();
-                        updateHistoryDisplay();
-                    }
-                });
-        } else {
-            // Người dùng chưa đăng nhập
-            authContainer.style.display = 'block';
-            userInfo.style.display = 'none';
-            
-            // Tải dữ liệu từ localStorage
-            events = JSON.parse(localStorage.getItem('events')) || [];
-            walletBalance = parseInt(localStorage.getItem('walletBalance')) || 0;
-            activityHistory = JSON.parse(localStorage.getItem('activityHistory')) || {
-                firstDate: null,
-                lastDate: null,
-                activeDates: [],
-                completedActivities: 0
-            };
-            
-            loadEvents();
-            updateWalletDisplay();
-            updateHistoryDisplay();
-        }
-    });
-    
-    // Xử lý đăng nhập
-    loginBtn.addEventListener('click', function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        loginUser(email, password);
-    });
-    
-    // Xử lý đăng ký
-    registerBtn.addEventListener('click', function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        registerUser(email, password);
-    });
-    
-    // Xử lý đăng xuất
-    logoutBtn.addEventListener('click', function() {
-        window.firebaseApp.auth.signOut()
-            .then(() => {
-                showNotification("Đã đăng xuất thành công!");
-            });
-    });
-    
     // Lấy các elements
     const eventForm = document.getElementById('eventForm');
     const eventsBody = document.getElementById('eventsBody');
@@ -96,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const activityDaysElement = document.getElementById('activityDays');
     const completedActivitiesElement = document.getElementById('completedActivities');
     const lastActiveDateElement = document.getElementById('lastActiveDate');
+    const selectDate = document.getElementById('selectDate');
     
     // Mảng lưu trữ các sự kiện và số dư ví
     let events = JSON.parse(localStorage.getItem('events')) || [];
@@ -108,6 +54,9 @@ document.addEventListener('DOMContentLoaded', function() {
         activeDates: [], // Mảng lưu các ngày đã có hoạt động
         completedActivities: 0 // Số lượng hoạt động đã hoàn thành
     };
+    
+    // Biến lưu ngày hiện tại đang xem
+    let currentDateView = null;
     
     // Cập nhật số dư ví ban đầu
     updateWalletDisplay();
@@ -268,47 +217,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hàm thêm tiền vào ví
     function addToWallet(amount) {
-        const user = window.firebaseApp.auth.currentUser;
-        if (user) {
-            const userId = user.uid;
-            const walletRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + userId + '/wallet');
-            
-            window.firebaseApp.dbGet(walletRef)
-                .then((snapshot) => {
-                    const currentBalance = snapshot.exists() ? snapshot.val() : 0;
-                    const newBalance = currentBalance + amount;
-                    
-                    // Cập nhật số dư mới
-                    window.firebaseApp.dbSet(walletRef, newBalance)
-                        .then(() => {
-                            walletBalance = newBalance;
-                            updateWalletDisplay();
-                            // Hiệu ứng highlight
-                            walletAmountContainer.classList.add('highlight');
-                            setTimeout(() => {
-                                walletAmountContainer.classList.remove('highlight');
-                            }, 2000);
-                        });
-                })
-                .catch((error) => {
-                    console.error("Lỗi khi cập nhật ví:", error);
-                    // Xử lý cục bộ nếu có lỗi
-                    walletBalance += amount;
-                    localStorage.setItem('walletBalance', walletBalance);
-                    updateWalletDisplay();
-                });
-        } else {
-            // Xử lý cục bộ nếu chưa đăng nhập
-            walletBalance += amount;
-            localStorage.setItem('walletBalance', walletBalance);
-            updateWalletDisplay();
-            
-            // Hiệu ứng highlight
-            walletAmountContainer.classList.add('highlight');
-            setTimeout(() => {
-                walletAmountContainer.classList.remove('highlight');
-            }, 2000);
-        }
+        walletBalance += amount;
+        localStorage.setItem('walletBalance', walletBalance);
+        updateWalletDisplay();
+        // Hiệu ứng highlight
+        walletAmountContainer.classList.add('highlight');
+        setTimeout(() => {
+            walletAmountContainer.classList.remove('highlight');
+        }, 2000);
     }
     
     // Hàm cập nhật hiển thị ví
@@ -405,18 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hàm lưu lịch sử hoạt động
     function saveActivityHistory() {
-        const user = window.firebaseApp.auth.currentUser;
-        if (user) {
-            const userId = user.uid;
-            const historyRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + userId + '/activityHistory');
-            window.firebaseApp.dbSet(historyRef, activityHistory)
-                .catch((error) => {
-                    console.error("Lỗi khi lưu lịch sử:", error);
-                    localStorage.setItem('activityHistory', JSON.stringify(activityHistory));
-                });
-        } else {
-            localStorage.setItem('activityHistory', JSON.stringify(activityHistory));
-        }
+        localStorage.setItem('activityHistory', JSON.stringify(activityHistory));
     }
     
     // Hàm hiển thị thông báo
@@ -492,70 +397,191 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Hàm lưu sự kiện vào Firebase (thay thế hàm saveEvents hiện tại)
+    // Hàm lưu sự kiện vào localStorage
     function saveEvents() {
-        const user = window.firebaseApp.auth.currentUser;
-        if (user) {
-            const userId = user.uid;
-            const eventsRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + userId + '/events');
-            window.firebaseApp.dbSet(eventsRef, events)
-                .then(() => {
-                    // Lưu thành công
-                })
-                .catch((error) => {
-                    console.error("Lỗi khi lưu sự kiện:", error);
-                    // Lưu vào localStorage khi có lỗi
-                    localStorage.setItem('events', JSON.stringify(events));
-                });
-        } else {
-            // Nếu chưa đăng nhập, vẫn lưu vào localStorage
-            localStorage.setItem('events', JSON.stringify(events));
-        }
+        localStorage.setItem('events', JSON.stringify(events));
     }
     
-    // Hàm tải sự kiện từ Firebase (thay thế hàm loadEvents hiện tại)
+    // Hàm so sánh ngày và thời gian bắt đầu để sắp xếp sự kiện
+    function compareEventDateTime(a, b) {
+        // So sánh ngày
+        const [dayA, monthA, yearA] = a.eventDate.split('/').map(Number);
+        const [dayB, monthB, yearB] = b.eventDate.split('/').map(Number);
+        const dateA = new Date(yearA, monthA - 1, dayA);
+        const dateB = new Date(yearB, monthB - 1, dayB);
+
+        if (dateA < dateB) return -1;
+        if (dateA > dateB) return 1;
+
+        // Nếu ngày giống nhau, so sánh thời gian bắt đầu
+        return a.timeStart.localeCompare(b.timeStart);
+    }
+    
+    // Hàm lấy danh sách ngày duy nhất từ events
+    function getUniqueDates() {
+        const dateSet = new Set(events.map(e => e.eventDate));
+        return Array.from(dateSet).sort((a, b) => compareDates(a, b));
+    }
+
+    // Hàm cập nhật dropdown ngày
+    function updateDateDropdown() {
+        const uniqueDates = getUniqueDates();
+        selectDate.innerHTML = '';
+        uniqueDates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            selectDate.appendChild(option);
+        });
+        // Nếu chưa chọn ngày hoặc ngày không còn trong danh sách, chọn ngày đầu tiên
+        if (!currentDateView || !uniqueDates.includes(currentDateView)) {
+            currentDateView = uniqueDates[0] || null;
+        }
+        selectDate.value = currentDateView;
+    }
+
+    // Lắng nghe sự kiện đổi ngày
+    selectDate.addEventListener('change', function() {
+        currentDateView = selectDate.value;
+        loadEvents();
+    });
+
+    // Sửa hàm loadEvents để chỉ hiển thị sự kiện của ngày đang chọn
     function loadEvents() {
-        const user = window.firebaseApp.auth.currentUser;
-        if (user) {
-            const userId = user.uid;
-            const eventsRef = window.firebaseApp.dbRef(window.firebaseApp.database, 'users/' + userId + '/events');
-            window.firebaseApp.dbGet(eventsRef)
-                .then((snapshot) => {
-                    if (snapshot.exists()) {
-                        events = snapshot.val() || [];
-                        eventsBody.innerHTML = ''; // Xóa bảng hiện tại
-                        events.forEach(event => {
-                            addEventToTable(event);
-                        });
-                        // Cập nhật lịch sử sau khi tải sự kiện
-                        updateActivityDates();
-                        updateHistoryDisplay();
-                    } else {
-                        // Không có dữ liệu
-                        events = [];
-                        eventsBody.innerHTML = '';
-                    }
-                })
-                .catch((error) => {
-                    console.error("Lỗi khi tải sự kiện:", error);
-                    // Tải từ localStorage khi có lỗi
-                    events = JSON.parse(localStorage.getItem('events')) || [];
-                    eventsBody.innerHTML = '';
+        events = JSON.parse(localStorage.getItem('events')) || [];
+        // Sắp xếp trước khi hiển thị
+        events.sort(compareEventDateTime);
+        updateDateDropdown();
+        eventsBody.innerHTML = '';
+        if (!currentDateView) return;
+        events.filter(event => event.eventDate === currentDateView).forEach(event => {
+            addEventToTable(event);
+        });
+    }
+
+    // Sửa hàm checkIfAllCompleted để kiểm tra theo ngày đang xem
+    function checkIfAllCompletedByDate(date) {
+        const eventsOfDate = events.filter(event => event.eventDate === date);
+        if (eventsOfDate.length === 0) return false;
+        return eventsOfDate.every(event => event.eventStatus === 'Đã hoàn thành');
+    }
+
+    // Sửa hàm checkAllCompleted để cộng thưởng, chuyển ngày, cập nhật lịch sử
+    function checkAllCompleted() {
+        if (checkIfAllCompletedByDate(currentDateView)) {
+            showReward();
+            // Khi đóng reward, cộng tiền, tăng số ngày hoàn thành, chuyển ngày
+            rewardClose.onclick = function() {
+                rewardNotification.classList.remove('show');
+                addToWallet(10000);
+                // Tăng số ngày hoàn thành
+                activityHistory.completedActivities++;
+                // Cập nhật ngày hoạt động gần nhất
+                activityHistory.lastDate = currentDateView;
+                saveActivityHistory();
+                updateHistoryDisplay();
+                // Chuyển sang ngày tiếp theo nếu có
+                const uniqueDates = getUniqueDates();
+                const idx = uniqueDates.indexOf(currentDateView);
+                if (idx !== -1 && idx < uniqueDates.length - 1) {
+                    const nextDate = uniqueDates[idx + 1];
+                    // Reset trạng thái các sự kiện của ngày mới về 'Chưa bắt đầu' nếu chưa hoàn thành
                     events.forEach(event => {
-                        addEventToTable(event);
+                        if (event.eventDate === nextDate && event.eventStatus !== 'Đã hoàn thành') {
+                            event.eventStatus = 'Chưa bắt đầu';
+                        }
                     });
-                });
-        } else {
-            // Nếu chưa đăng nhập, vẫn tải từ localStorage
-            events = JSON.parse(localStorage.getItem('events')) || [];
-            eventsBody.innerHTML = '';
-            events.forEach(event => {
-                addEventToTable(event);
-            });
+                    saveEvents();
+                    currentDateView = nextDate;
+                    selectDate.value = currentDateView;
+                    loadEvents();
+                }
+            };
         }
     }
-    
-    // Hàm thêm sự kiện vào bảng
+
+    // Khi tải ứng dụng lần đầu, chọn ngày đầu tiên nếu có
+    if (!currentDateView) {
+        const uniqueDates = getUniqueDates();
+        currentDateView = uniqueDates[0] || null;
+    }
+
+    // Thêm một số sự kiện mẫu nếu danh sách trống
+    if (events.length === 0) {
+        const today = new Date();
+        const day = today.getDate().toString().padStart(2, '0');
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const year = today.getFullYear();
+        const formattedToday = `${day}/${month}/${year}`;
+        
+        const sampleEvents = [
+            {
+                id: 1,
+                timeStart: '07:45',
+                timeEnd: '08:00',
+                eventName: 'Thức dậy & tập thể dục',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            },
+            {
+                id: 2,
+                timeStart: '08:00',
+                timeEnd: '16:30',
+                eventName: 'Làm việc',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            },
+            {
+                id: 3,
+                timeStart: '16:30',
+                timeEnd: '17:00',
+                eventName: 'Chạy bộ',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            },
+            {
+                id: 4,
+                timeStart: '17:00',
+                timeEnd: '18:00',
+                eventName: 'Ăn trưa & nghỉ ngơi',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            },
+            {
+                id: 5,
+                timeStart: '18:00',
+                timeEnd: '22:00',
+                eventName: 'Chạy SM xanh',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            },
+            {
+                id: 6,
+                timeStart: '22:30',
+                timeEnd: '00:00',
+                eventName: 'Nghỉ ngơi',
+                eventDate: formattedToday,
+                eventStatus: 'Chưa bắt đầu'
+            }
+        ];
+        
+        events = sampleEvents;
+        saveEvents();
+        
+        // Cập nhật lịch sử hoạt động từ dữ liệu mẫu
+        activityHistory.firstDate = formattedToday;
+        activityHistory.lastDate = formattedToday;
+        activityHistory.activeDates = [formattedToday];
+        activityHistory.completedActivities = events.filter(event => event.eventStatus === 'Đã hoàn thành').length;
+        saveActivityHistory();
+        
+        loadEvents();
+        updateHistoryDisplay();
+        updateDateDropdown();
+        currentDateView = formattedToday;
+        selectDate.value = currentDateView;
+    }
+
     function addEventToTable(event) {
         const row = document.createElement('tr');
         
@@ -574,21 +600,40 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tạo cột trạng thái với biểu tượng và màu tương ứng
         const statusCell = document.createElement('td');
         const statusSpan = document.createElement('span');
-        statusSpan.textContent = event.eventStatus;
+        let displayStatus = event.eventStatus;
+        // Nếu là ngày hôm nay và chưa hoàn thành, kiểm tra giờ để hiển thị 'Đang thực hiện'
+        const todayVN = getVietnamTime();
+        const [day, month, year] = event.eventDate.split('/');
+        const todayStr = `${day}/${month}/${year}`;
+        const isToday = todayVN.getDate().toString().padStart(2, '0') === day &&
+                        (todayVN.getMonth() + 1).toString().padStart(2, '0') === month &&
+                        todayVN.getFullYear().toString() === year;
+        if (isToday && event.eventStatus !== 'Đã hoàn thành') {
+            // So sánh giờ
+            const [startH, startM] = event.timeStart.split(':').map(Number);
+            const [endH, endM] = event.timeEnd.split(':').map(Number);
+            const start = new Date(todayVN);
+            start.setHours(startH, startM, 0, 0);
+            const end = new Date(todayVN);
+            end.setHours(endH, endM, 0, 0);
+            // Nếu timeEnd < timeStart (qua ngày), cộng thêm 1 ngày cho end
+            if (end < start) end.setDate(end.getDate() + 1);
+            if (todayVN >= start && todayVN <= end) {
+                displayStatus = 'Đang thực hiện';
+            }
+        }
+        statusSpan.textContent = displayStatus;
         statusSpan.className = 'status';
-        
-        // Thêm class theo trạng thái
-        if (event.eventStatus === 'Đã hoàn thành') {
+        if (displayStatus === 'Đã hoàn thành') {
             statusSpan.classList.add('completed');
-            statusSpan.innerHTML = '✓ ' + event.eventStatus;
-        } else if (event.eventStatus === 'Đang thực hiện') {
+            statusSpan.innerHTML = '✓ ' + displayStatus;
+        } else if (displayStatus === 'Đang thực hiện') {
             statusSpan.classList.add('in-progress');
-            statusSpan.innerHTML = '⏳ ' + event.eventStatus;
+            statusSpan.innerHTML = '⏳ ' + displayStatus;
         } else {
             statusSpan.classList.add('not-started');
-            statusSpan.innerHTML = '⏸ ' + event.eventStatus;
+            statusSpan.innerHTML = '⏸ ' + displayStatus;
         }
-        
         statusCell.appendChild(statusSpan);
         
         // Tạo cột thao tác
@@ -622,131 +667,5 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Thêm hàng vào bảng
         eventsBody.appendChild(row);
-    }
-    
-    // Hàm định dạng ngày
-    function formatDate(dateString) {
-        if (!dateString) return '';
-        
-        const date = new Date(dateString);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        
-        return `${day}/${month}/${year}`;
-    }
-    
-    // Hàm lấy ngày hiện tại (định dạng dd/mm/yyyy)
-    function getCurrentDate() {
-        const today = new Date();
-        const day = today.getDate().toString().padStart(2, '0');
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const year = today.getFullYear();
-        
-        return `${day}/${month}/${year}`;
-    }
-    
-    // Hàm tự động điền ngày hiện tại
-    function setTodayDate() {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const day = today.getDate().toString().padStart(2, '0');
-        
-        document.getElementById('eventDate').value = `${year}-${month}-${day}`;
-    }
-    
-    // Hàm kiểm tra xem tất cả sự kiện đã hoàn thành chưa
-    function checkIfAllCompleted() {
-        if (events.length === 0) return false;
-        
-        return events.every(event => event.eventStatus === 'Đã hoàn thành');
-    }
-    
-    // Hàm kiểm tra và hiển thị thông báo nếu tất cả sự kiện đã hoàn thành
-    function checkAllCompleted() {
-        if (checkIfAllCompleted()) {
-            showReward();
-        }
-    }
-
-    // Khi tải ứng dụng lần đầu, cập nhật lịch sử hoạt động từ sự kiện hiện có
-    if (events.length > 0 && (!activityHistory.firstDate || activityHistory.activeDates.length === 0)) {
-        updateActivityDates();
-        saveActivityHistory();
-        updateHistoryDisplay();
-    }
-
-    // Thêm một số sự kiện mẫu nếu danh sách trống
-    if (events.length === 0) {
-        const today = new Date();
-        const day = today.getDate().toString().padStart(2, '0');
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const year = today.getFullYear();
-        const formattedToday = `${day}/${month}/${year}`;
-        
-        const sampleEvents = [
-            {
-                id: 1,
-                timeStart: '07:00',
-                timeEnd: '08:00',
-                eventName: 'Thức dậy & Ăn sáng',
-                eventDate: formattedToday,
-                eventStatus: 'Đã hoàn thành'
-            },
-            {
-                id: 2,
-                timeStart: '08:00',
-                timeEnd: '10:00',
-                eventName: 'Làm việc dự án LumiMind',
-                eventDate: formattedToday,
-                eventStatus: 'Đã hoàn thành'
-            },
-            {
-                id: 3,
-                timeStart: '10:00',
-                timeEnd: '10:30',
-                eventName: 'Nghỉ ngơi',
-                eventDate: formattedToday,
-                eventStatus: 'Đang thực hiện'
-            },
-            {
-                id: 4,
-                timeStart: '10:30',
-                timeEnd: '12:00',
-                eventName: 'Viết kế hoạch kinh doanh',
-                eventDate: formattedToday,
-                eventStatus: 'Đang thực hiện'
-            },
-            {
-                id: 5,
-                timeStart: '12:00',
-                timeEnd: '13:00',
-                eventName: 'Ăn trưa & nghỉ trưa',
-                eventDate: formattedToday,
-                eventStatus: 'Chưa bắt đầu'
-            },
-            {
-                id: 6,
-                timeStart: '13:00',
-                timeEnd: '15:00',
-                eventName: 'Họp nhóm',
-                eventDate: formattedToday,
-                eventStatus: 'Chưa bắt đầu'
-            }
-        ];
-        
-        events = sampleEvents;
-        saveEvents();
-        
-        // Cập nhật lịch sử hoạt động từ dữ liệu mẫu
-        activityHistory.firstDate = formattedToday;
-        activityHistory.lastDate = formattedToday;
-        activityHistory.activeDates = [formattedToday];
-        activityHistory.completedActivities = events.filter(event => event.eventStatus === 'Đã hoàn thành').length;
-        saveActivityHistory();
-        
-        loadEvents();
-        updateHistoryDisplay();
     }
 }); 
